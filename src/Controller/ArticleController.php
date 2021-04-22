@@ -3,11 +3,13 @@
 namespace App\Controller;
 
 use Michelf\MarkdownInterface;
+use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Contracts\Cache\CacheInterface;
 use Twig\Environment;
 
 class ArticleController extends AbstractController
@@ -23,7 +25,7 @@ class ArticleController extends AbstractController
     /**
      * @Route("/news/{slug}", name="article_show")
      */
-    public function show($slug, MarkdownInterface $markdown)
+    public function show($slug, MarkdownInterface $markdown, CacheItemPoolInterface $cache)
     {
         $comments = [
             'I ate a normal rock once. It did NOT taste like bacon!',
@@ -49,6 +51,13 @@ strip steak pork belly aliquip capicola officia. Labore deserunt esse chicken lo
 cow est ribeye adipisicing. Pig hamburger pork belly enim. Do porchetta minim capicola irure pancetta chuck
 fugiat.
 EOF;
+
+        $item = $cache->getItem('markdown_'.md5($articleContent));
+
+        if (!$item->isHit()) {
+            $item->set($markdown->transform($articleContent));
+            $cache->save($item);
+        }
 
         $articleContent = $markdown->transform($articleContent);
 
